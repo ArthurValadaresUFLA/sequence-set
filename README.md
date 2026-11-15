@@ -14,9 +14,12 @@ arquivos CSV e binários, busca e remoção por identificador e impressão dos d
 
 ## Compilação
 
+Os *presets* do CMake mantêm toda a configuração fora da árvore de fontes: os arquivos gerados
+(`CMakeCache.txt`, `Makefile`, `Doxyfile` e similares) ficam em `build/`, que é ignorado pelo Git.
+
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake --preset default
+cmake --build --preset default
 ```
 
 O executável é gerado em `build/sequence-set`.
@@ -24,11 +27,21 @@ O executável é gerado em `build/sequence-set`.
 Para gerar a documentação Doxygen:
 
 ```bash
-cmake -S . -B build -DSEQUENCE_SET_BUILD_DOCS=ON
-cmake --build build --target docs
+cmake --preset docs
+cmake --build --preset docs --target docs
 ```
 
 A documentação HTML é escrita em `doc/generated/html`.
+
+Há também o preset `debug`, que compila com símbolos de depuração. Configurações manuais continuam
+funcionando, desde que apontem para um diretório separado:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+```
+
+Builds dentro da árvore de fontes (*in-source*) são bloqueados pelo `CMakeLists.txt` justamente para
+não poluir a raiz do projeto.
 
 ## Execução
 
@@ -44,6 +57,7 @@ binários.
 ```text
 sequence-set/
 ├── CMakeLists.txt
+├── CMakePresets.json
 ├── doc/
 │   └── Doxyfile.in
 ├── include/

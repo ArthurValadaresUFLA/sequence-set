@@ -13,18 +13,32 @@
 #include <sequence-set/entry/entry.h>
 #include <sequence-set/sequence_set.h>
 
+/// @file
+/// @brief Menu interativo e rotinas de leitura/escrita de CSV e binário.
+
+/// @brief Código da aplicação.
 namespace Project {
 
 namespace {
 
+/// Cabeçalho esperado nos arquivos CSV.
 constexpr auto kCsvHeader =
     R"(time_ref,"account","code","country_code","product_type",value,"status")";
 
+/// Escreve um valor primitivo em @p file em formato binário.
+/// @tparam U Tipo do valor.
+/// @param file Arquivo de saída aberto em modo binário.
+/// @param value Valor a ser escrito.
 template <class U>
 void writeValue(std::ofstream& file, const U& value) {
   file.write(reinterpret_cast<const char*>(&value), static_cast<std::streamsize>(sizeof(U)));
 }
 
+/// Lê um valor primitivo de @p file em formato binário.
+/// @tparam U Tipo do valor.
+/// @param file Arquivo de entrada aberto em modo binário.
+/// @param value Destino do valor lido.
+/// @throw std::runtime_error Se a leitura falhar.
 template <class U>
 void readValue(std::ifstream& file, U& value) {
   file.read(reinterpret_cast<char*>(&value), static_cast<std::streamsize>(sizeof(U)));
@@ -33,12 +47,19 @@ void readValue(std::ifstream& file, U& value) {
   }
 }
 
+/// Escreve uma string precedida pelo seu tamanho.
+/// @param file Arquivo de saída aberto em modo binário.
+/// @param value String a ser escrita.
 void writeString(std::ofstream& file, const std::string& value) {
   const std::size_t length = value.size();
   writeValue(file, length);
   file.write(value.data(), static_cast<std::streamsize>(length));
 }
 
+/// Lê uma string precedida pelo seu tamanho.
+/// @param file Arquivo de entrada aberto em modo binário.
+/// @return String lida do arquivo.
+/// @throw std::runtime_error Se a leitura do conteúdo falhar.
 std::string readString(std::ifstream& file) {
   std::size_t length = 0;
   readValue(file, length);
@@ -57,8 +78,12 @@ std::string readString(std::ifstream& file) {
 
 /// Lê um arquivo CSV e retorna os dados como um SequenceSet<Entry>.
 ///
+/// Linhas vazias e o cabeçalho são ignorados. Cada linha restante é convertida
+/// em um Entry e inserida com um identificador sequencial crescente.
+///
 /// @param filename Caminho do arquivo CSV.
 /// @param chunkSize Capacidade de cada chunk.
+/// @return Conjunto com os registros lidos.
 /// @throw std::runtime_error Se o arquivo não existir ou não puder ser aberto.
 SequenceSet<Entry> readCSV(const std::string& filename, std::size_t chunkSize) {
   if (!std::filesystem::exists(filename)) {
@@ -87,6 +112,13 @@ SequenceSet<Entry> readCSV(const std::string& filename, std::size_t chunkSize) {
 }
 
 /// Salva os dados de um SequenceSet<Entry> em um arquivo CSV.
+///
+/// O cabeçalho é escrito antes dos registros; cada Entry é serializado pelo
+/// seu método toCSV.
+///
+/// @param entries Conjunto de registros a salvar.
+/// @param filename Caminho do arquivo CSV de destino.
+/// @throw std::runtime_error Se o arquivo não puder ser aberto ou escrito.
 void saveCSV(const SequenceSet<Entry>& entries, const std::string& filename) {
   std::ofstream file(filename);
   if (!file.is_open()) {
@@ -106,6 +138,15 @@ void saveCSV(const SequenceSet<Entry>& entries, const std::string& filename) {
 }
 
 /// Lê os dados serializados por saveBinary.
+///
+/// O arquivo começa com a capacidade dos chunks e a quantidade de chunks; em
+/// seguida, cada chunk informa seu tamanho e seus elementos. Os campos de
+/// texto são lidos como tamanho seguido de conteúdo.
+///
+/// @param filename Caminho do arquivo binário.
+/// @return Conjunto com os registros lidos do arquivo.
+/// @throw std::runtime_error Se o arquivo não existir, não puder ser aberto ou
+/// estiver corrompido.
 SequenceSet<Entry> readBinary(const std::string& filename) {
   if (!std::filesystem::exists(filename)) {
     throw std::runtime_error("o arquivo não existe");
@@ -152,6 +193,14 @@ SequenceSet<Entry> readBinary(const std::string& filename) {
 }
 
 /// Salva os dados de um SequenceSet<Entry> em um arquivo binário.
+///
+/// A capacidade dos chunks e a quantidade de chunks são escritas primeiro.
+/// Para cada chunk, grava-se a quantidade de elementos e, para cada Entry, os
+/// campos primitivos seguidos das strings no formato tamanho + conteúdo.
+///
+/// @param entries Conjunto de registros a salvar.
+/// @param filename Caminho do arquivo binário de destino.
+/// @throw std::runtime_error Se o arquivo não puder ser aberto ou escrito.
 void saveBinary(const SequenceSet<Entry>& entries, const std::string& filename) {
   std::ofstream file(filename, std::ios::binary);
   if (!file.is_open()) {
@@ -185,6 +234,13 @@ void saveBinary(const SequenceSet<Entry>& entries, const std::string& filename) 
 
 }  // namespace Project
 
+/// Executa o menu interativo da aplicação.
+///
+/// Os comandos aceitos são `read`, `b-read`, `save`, `b-save`, `search`,
+/// `remove`, `print` e `exit`. Cada comando pode falhar com uma exceção, que é
+/// capturada para que o menu continue em execução.
+///
+/// @return 0 após o encerramento normal do menu.
 int main() {
   SequenceSet<Entry> entries(5);
 

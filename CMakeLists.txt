@@ -1,6 +1,15 @@
 # Versão mínima alinhada à estrutura de referência do projeto data-structure.
 cmake_minimum_required(VERSION 3.28)
 
+# Bloqueia builds dentro da árvore de fontes: eles espalhariam CMakeCache.txt,
+# Makefile, Doxyfile e outros artefatos pela raiz do projeto.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+  message(
+    FATAL_ERROR
+      "Build dentro da árvore de fontes não é permitido. Informe um diretório "
+      "separado: cmake -S . -B build (ou use cmake --preset default).")
+endif()
+
 project(
   sequence-set
   VERSION 0.1.0
